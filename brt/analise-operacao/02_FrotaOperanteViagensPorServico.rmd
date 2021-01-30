@@ -1,4 +1,4 @@
-#intalar e carregar pacotes
+# Instalar e carregar pacotes
 
 #install.packages("openxlsx")
 #install.packages("dplyr")
@@ -373,6 +373,9 @@ while (dia1 <= dia2){
   
   ### Se tabela de resumo do mes jÃ¡ existe, acrescente os dados da tabela de resumo do dia. 
   ### Se nao existe, crie a tabela de resumo do mes.
+  
+  message("dia finalizado")
+  
   
   if (exists("Resumo")){
     Resumo <- rbind(Resumo,Resumo_dia)
