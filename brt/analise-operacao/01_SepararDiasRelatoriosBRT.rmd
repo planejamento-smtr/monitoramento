@@ -1,5 +1,4 @@
 ### Carregar pacotes
-
 library(openxlsx)
 library(readxl)
 library(lubridate)
@@ -44,14 +43,33 @@ dados <- read_excel(end_rel,trim_ws = TRUE)%>%
 ########### Padronizacao da redacao dos trajetos. Importante para obter o valor correto da linha.
 ### Caso existam novos servicos sera necessario atualizar o codigo.
 
-original <- c("10 - ALVORADA X SANTA CRUZ ( EXPRESSO )", "10- SANTA CRUZ X ALVORADA ( EXPRESSO )", "LECD33- CAMPO GRANDE X SANTA CRUZ", "42A - GALEÃÆO X MADUREIRA (PARADOR)", "42E - GALEÃÆO X SANTA EFIGÃÅ NIA (PARADOR)", "LECD33- SANTA CRUZ X CAMPO GRANDE", "12 - PINGO D'AGUA X ALVORADA ( EXPRESSO )", "11N - SANTA CRUZ X ALVORADA", "11N - ALVORADA X SANTA CRUZ", "51A - Vila Militar x Terminal Alvorada", "12 - ALVORADA X PINGO D'AGUA ( EXPRESSO )", "51A -  Terminal Alvorada x Vila Militar", "51 - T. RECREIO X VILA MILITAR (PARADOR)", "51 - VILA MILITAR X T. RECREIO (PARADOR)", "38A - GALEÃÆO X ALVORADA (PARADOR)", "38A - ALVORADA X GALEÃÆO (PARADOR)", "27 - MATO ALTO - SALVADOR ALLENDE (PARADOR)", "25A -  MATO ALTO X  ALVORADA -  SEMI EXPRESSO", "25A -  ALVORADA X MATO ALTO -  SEMI EXPRESSO", "35 - MADUREIRA X ALVORADA ( PARADOR )- ida", "35 - ALVORADA  X  MADUREIRA ( PARADOR ) - Volta", "22- ALVORADA X J. OCEÃâNICO (PARADOR)", "22 - J. OCEÃâNICO X ALVORADA (PARADOR)", "42A - MADUREIRA X GALEAO (PARADOR)", "19 - PINGO D'AGUA X SALVADOR ALLENDE ( EXPRESSO )", "46 - ALVORADA X PENHA ( EXPRESSO )", "46- PENHA X ALVORADA ( EXPRESSO )", "53A - SULACAP X ALVORADA ( EXPRESSO )", "53A - ALVORADA X SULACAP ( EXPRESSO )", "40A - ALVORADA X MADUREIRA ( EXPRESSO )", "40A - MADUREIRA X ALVORADA ( EXPRESSO )", "38N - FUNDÃÆO X ALVORADA", "15 RECREIO SHOPPING X PINGO D'ÃÂGUA", "14 - CAMPO GRANDE X SALVADOR ALLENDE", "14 - SALVADOR ALLENDE X CAMPO GRANDE", "50 - J.OCEÃâNICO x TERMINAL OLIMPICO (PARADOR)", "50 - TERMINAL OLIMPICO X J.OCEÃâNICO (PARADOR)", "20 - SANTA CRUZ X SALVADOR ALLENDE ( EXPRESSO )", "20 - SALVADOR ALLENDE X SANTA CRUZ ( EXPRESSO )", "13 - MATO ALTO X ALVORADA ( EXPRESSO )", "13- ALVORADA X  MATO ALTO ( EXPRESSO )", "53B JD OCEANICO X SULACAP (PARADOR)", "53B - SULACAP X JD. OCEANICO (PARADOR)", "29 - SALVADOR ALLENDE X  JARDIM OCEÃâNICO (PARADOR)", "29 -  JARDIM OCEÃâNICO X SALVADOR ALLENDE (PARADOR)", "41 - RECREIO X TERMINAL MADUREIRA (EXPRESSO)", "41 - TERMINAL MADUREIRA X RECREIO (EXPRESSO)", "35A -  JARDIM OCEÃâNICO X MADUREIRA", "35A - MADUREIRA X JARDIM OCEÃâNICO", "18 - RECREIO SHOPPING X JARDIM OCEÃâNICO ( EXPRESSO )", "15 PINGO D'ÃÂGUA X RECREIO SHOPPING", "19 - SALVADOR ALLENDE X PINGO D'AGUA ( EXPRESSO )", "18 - JARDIM OCEÃâNICO X RECREIO SHOPPING ( EXPRESSO )", "27 - SALVADOR ALLENDE x MATO ALTO (PARADOR)", "31 Ã¢â¬â ALVORADA X VICENTE DE CARVALHO ( Semi direto )", "31 Ã¢â¬â VICENTE DE CARVALHO X ALVORADA ( Semi direto )", "47 -  SANTA EFIGÃÅ NIA X MADUREIRA", "37 - Alvorada x Tanque")
-novo <- c("10: Alvorada / Santa Cruz", "10: Santa Cruz / Alvorada", "LECD33: Campo Grande / Santa Cruz", "42A: Galeao / Madureira", "42E: Galeao / Santa Efigenia", "LECD33: Santa Cruz / Campo Grande", "12: Pingo d'Água / Alvorada", "11N: Santa Cruz / Alvorada", "11N: Alvorada / Santa Cruz", "51A: Vila Militar / Terminal Alvorada", "12: Alvorada / Pingo d'Água", "51A:  Terminal Alvorada / Vila Militar", "51: Terminal Recreio / Vila Militar", "51: Vila Militar / Terminal Recreio", "38A: Galeao / Alvorada", "38A: Alvorada / Galeao", "27: Mato Alto: Salvador Allende", "25A:  Mato Alto /  Alvorada", "25A:  Alvorada / Mato Alto", "35: Madureira / Alvorada", "35: Alvorada  /  Madureira", "22: Alvorada / Jardim Oceanico", "22: Jardim Oceanico/ Alvorada", "42A: Madureira / Galeao", "19: Pingo d'Água / Salvador Allende", "46: Alvorada / Penha", "46: Penha / Alvorada", "53A: Sulacap / Alvorada", "53A: Alvorada / Sulacap", "40A: Alvorada / Madureira", "40A: Madureira / Alvorada", "38N: FundÃ£o / Alvorada", "15: Recreio Shopping / Pingo d'Água", "14: Campo Grande / Salvador Allende", "14: Salvador Allende / Campo Grande", "50: Jardim Oceanico/ Terminal Olimpico", "50: Terminal Olimpico/ Jardim Oceanico", "20: Santa Cruz / Salvador Allende", "20: Salvador Allende / Santa Cruz", "13: Mato Alto / Alvorada", "13: Alvorada /  Mato Alto", "53B: Jardim Oceanico / Sulacap", "53B: Sulacap / Jardim Oceanico", "29: Salvador Allende /  Jardim Oceanico", "29:  Jardim Oceanico/ Salvador Allende", "41: Recreio / Terminal Madureira", "41: Terminal Madureira / Recreio", "35A:  Jardim Oceanico/ Madureira", "35A: Madureira / Jardim Oceanico", "18: Recreio Shopping / Jardim Oceanico", "15: Pingo d'Água / Recreio Shopping", "19: Salvador Allende / Pingo d'Água", "18: Jardim Oceanico/ Recreio Shopping", "27: Salvador Allende / Mato Alto", "31A: Alvorada / Vicente de Carvalho", "31A: Vicente de Carvalho / Alvorada", "47:  Santa Efigenia/ Madureira", "37: Alvorada / Tanque")
+original <- unique(dados$Trajeto)
 
-### Formatar nomenclatura de servicos
-### Original pelo texto formatado. Nao modificar.
+novo <- c("10: Alvorada / Santa Cruz", "10: Santa Cruz / Alvorada", "LECD33: Campo Grande / Santa Cruz", 
+          "42A: Galeao / Madureira", "42E: Galeao / Santa Efigenia", "LECD33: Santa Cruz / Campo Grande", 
+          "12: Pingo d'Água / Alvorada", "11N: Santa Cruz / Alvorada", "11N: Alvorada / Santa Cruz", 
+          "51A: Vila Militar / Terminal Alvorada", "12: Alvorada / Pingo d'Água", "51A:  Terminal Alvorada / Vila Militar", 
+          "51: Terminal Recreio / Vila Militar", "51: Vila Militar / Terminal Recreio", "38A: Galeao / Alvorada", 
+          "38A: Alvorada / Galeao", "27: Mato Alto: Salvador Allende", "25A:  Mato Alto /  Alvorada", 
+          "25A:  Alvorada / Mato Alto", "35: Madureira / Alvorada", "35: Alvorada  /  Madureira", 
+          "22: Alvorada / Jardim Oceanico", "22: Jardim Oceanico/ Alvorada", "42A: Madureira / Galeao", 
+          "19: Pingo d'Água / Salvador Allende", "46: Alvorada / Penha", "46: Penha / Alvorada", "53A: Sulacap / Alvorada", 
+          "53A: Alvorada / Sulacap", "40A: Alvorada / Madureira", "40A: Madureira / Alvorada", "38N: Fundao / Alvorada", 
+          "15: Recreio Shopping / Pingo d'Água", "14: Campo Grande / Salvador Allende", "14: Salvador Allende / Campo Grande", 
+          "50: Jardim Oceanico/ Terminal Olimpico", "50: Terminal Olimpico/ Jardim Oceanico", "20: Santa Cruz / Salvador Allende", 
+          "20: Salvador Allende / Santa Cruz", "13: Mato Alto / Alvorada", "13: Alvorada /  Mato Alto", "53B: Jardim Oceanico / Sulacap", 
+          "53B: Sulacap / Jardim Oceanico", "29: Salvador Allende /  Jardim Oceanico", "29:  Jardim Oceanico/ Salvador Allende", 
+          "41: Recreio / Terminal Madureira", "41: Terminal Madureira / Recreio", "35A:  Jardim Oceanico/ Madureira", "35A: Madureira / Jardim Oceanico", 
+          "18: Recreio Shopping / Jardim Oceanico", "15: Pingo d'Água / Recreio Shopping", "19: Salvador Allende / Pingo d'Água", 
+          "18: Jardim Oceanico/ Recreio Shopping", "27: Salvador Allende / Mato Alto", "31A: Alvorada / Vicente de Carvalho", 
+          "31A: Vicente de Carvalho / Alvorada", "47:  Santa Efigenia/ Madureira", "37: Alvorada / Tanque")
+
+### Transforma os dados em data frame, remove espacos e pontuacoes, substitui a redacao
+### original pelo texto formatado. Nao modificar.
 dados <- as.data.frame(dados) %>%
   mutate(Trajeto = ifelse(Trajeto %in% original, novo, Trajeto))
 
+unique(dados$Trajeto)
 
 ### Recorta os dados por dia e os grava na pasta.
 
@@ -64,3 +82,4 @@ while (dia1 <= dia2){
   write.xlsx(Recortado,end_xls) 
   dia1 <- dia1 + days(1)
 } #funcao para separar dias
+
