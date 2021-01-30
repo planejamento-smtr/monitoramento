@@ -14,14 +14,13 @@ dia2 <- as.POSIXct("2021-01-26", format="%Y-%m-%d")
 
 
 
-### Pega o ano e o mÃªs da data 1. NÃ£o mexer.
+### Pega o ano e o mes da data 1. Nao modificar.
 
 ano <- as.character(dia1, format = "%Y")
 mes <- as.character(dia1, format = "%m")
 
 ########### INSIRA A PASTA ONDE ESTAO OS ARQUIVOS
-## Importante seguir a hierarquia, com uma pasta por ano. Dentro desta pasta devera haver uma pasta
-## para cada mes.
+## Importante seguir a hierarquia, com uma pasta por ano. Dentro desta pasta devera haver uma pasta para cada mes.
 
 pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
 
@@ -29,7 +28,7 @@ pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
 
 end_rel <- paste0(pasta, ano, "/", mes, "/Viagens Janeiro.21.xlsx")
 
-### Ler o arquivo. Nao modificar
+### Ler o arquivo. Nao modificar.
 
 dados <- read_excel(end_rel,trim_ws = TRUE)%>%
   select(Data, Trajeto, `Veiculo Real`, `Partida Real`, `Chegada Real`, `Tempo Viagem`, `KM Executado`) %>%
@@ -40,24 +39,24 @@ dados <- read_excel(end_rel,trim_ws = TRUE)%>%
   #format the date column
   select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`)
 
-########### PadronizaÃ§Ã£o da redaÃ§Ã£o dos trajetos. Importante para obter o valor correto da linha.
-### Caso existam novos serviÃ§os serÃ¡ necessÃ¡rio atualizar o cÃ³digo.
+########### Padronizacao da redacao dos trajetos. Importante para obter o valor correto da linha.
+### Caso existam novos servicos sera necessario atualizar o codigo.
 
 original <- c("10 - ALVORADA X SANTA CRUZ ( EXPRESSO )", "10- SANTA CRUZ X ALVORADA ( EXPRESSO )", "LECD33- CAMPO GRANDE X SANTA CRUZ", "42A - GALEÃÆO X MADUREIRA (PARADOR)", "42E - GALEÃÆO X SANTA EFIGÃÅ NIA (PARADOR)", "LECD33- SANTA CRUZ X CAMPO GRANDE", "12 - PINGO D'AGUA X ALVORADA ( EXPRESSO )", "11N - SANTA CRUZ X ALVORADA", "11N - ALVORADA X SANTA CRUZ", "51A - Vila Militar x Terminal Alvorada", "12 - ALVORADA X PINGO D'AGUA ( EXPRESSO )", "51A -  Terminal Alvorada x Vila Militar", "51 - T. RECREIO X VILA MILITAR (PARADOR)", "51 - VILA MILITAR X T. RECREIO (PARADOR)", "38A - GALEÃÆO X ALVORADA (PARADOR)", "38A - ALVORADA X GALEÃÆO (PARADOR)", "27 - MATO ALTO - SALVADOR ALLENDE (PARADOR)", "25A -  MATO ALTO X  ALVORADA -  SEMI EXPRESSO", "25A -  ALVORADA X MATO ALTO -  SEMI EXPRESSO", "35 - MADUREIRA X ALVORADA ( PARADOR )- ida", "35 - ALVORADA  X  MADUREIRA ( PARADOR ) - Volta", "22- ALVORADA X J. OCEÃâNICO (PARADOR)", "22 - J. OCEÃâNICO X ALVORADA (PARADOR)", "42A - MADUREIRA X GALEAO (PARADOR)", "19 - PINGO D'AGUA X SALVADOR ALLENDE ( EXPRESSO )", "46 - ALVORADA X PENHA ( EXPRESSO )", "46- PENHA X ALVORADA ( EXPRESSO )", "53A - SULACAP X ALVORADA ( EXPRESSO )", "53A - ALVORADA X SULACAP ( EXPRESSO )", "40A - ALVORADA X MADUREIRA ( EXPRESSO )", "40A - MADUREIRA X ALVORADA ( EXPRESSO )", "38N - FUNDÃÆO X ALVORADA", "15 RECREIO SHOPPING X PINGO D'ÃÂGUA", "14 - CAMPO GRANDE X SALVADOR ALLENDE", "14 - SALVADOR ALLENDE X CAMPO GRANDE", "50 - J.OCEÃâNICO x TERMINAL OLIMPICO (PARADOR)", "50 - TERMINAL OLIMPICO X J.OCEÃâNICO (PARADOR)", "20 - SANTA CRUZ X SALVADOR ALLENDE ( EXPRESSO )", "20 - SALVADOR ALLENDE X SANTA CRUZ ( EXPRESSO )", "13 - MATO ALTO X ALVORADA ( EXPRESSO )", "13- ALVORADA X  MATO ALTO ( EXPRESSO )", "53B JD OCEANICO X SULACAP (PARADOR)", "53B - SULACAP X JD. OCEANICO (PARADOR)", "29 - SALVADOR ALLENDE X  JARDIM OCEÃâNICO (PARADOR)", "29 -  JARDIM OCEÃâNICO X SALVADOR ALLENDE (PARADOR)", "41 - RECREIO X TERMINAL MADUREIRA (EXPRESSO)", "41 - TERMINAL MADUREIRA X RECREIO (EXPRESSO)", "35A -  JARDIM OCEÃâNICO X MADUREIRA", "35A - MADUREIRA X JARDIM OCEÃâNICO", "18 - RECREIO SHOPPING X JARDIM OCEÃâNICO ( EXPRESSO )", "15 PINGO D'ÃÂGUA X RECREIO SHOPPING", "19 - SALVADOR ALLENDE X PINGO D'AGUA ( EXPRESSO )", "18 - JARDIM OCEÃâNICO X RECREIO SHOPPING ( EXPRESSO )", "27 - SALVADOR ALLENDE x MATO ALTO (PARADOR)", "31 Ã¢â¬â ALVORADA X VICENTE DE CARVALHO ( Semi direto )", "31 Ã¢â¬â VICENTE DE CARVALHO X ALVORADA ( Semi direto )", "47 -  SANTA EFIGÃÅ NIA X MADUREIRA", "37 - Alvorada x Tanque")
 novo <- c("10: Alvorada / Santa Cruz", "10: Santa Cruz / Alvorada", "LECD33: Campo Grande / Santa Cruz", "42A: GaleÃ£o / Madureira", "42E: GaleÃ£o / Santa EfigÃªnia", "LECD33: Santa Cruz / Campo Grande", "12: Pingo d'Ãgua / Alvorada", "11N: Santa Cruz / Alvorada", "11N: Alvorada / Santa Cruz", "51A: Vila Militar / Terminal Alvorada", "12: Alvorada / Pingo d'Ãgua", "51A:  Terminal Alvorada / Vila Militar", "51: Terminal Recreio / Vila Militar", "51: Vila Militar / Terminal Recreio", "38A: GaleÃ£o / Alvorada", "38A: Alvorada / GaleÃ£o", "27: Mato Alto: Salvador Allende", "25A:  Mato Alto /  Alvorada", "25A:  Alvorada / Mato Alto", "35: Madureira / Alvorada", "35: Alvorada  /  Madureira", "22: Alvorada / Jardim OceÃ¢nico", "22: Jardim OceÃ¢nico/ Alvorada", "42A: Madureira / GaleÃ£o", "19: Pingo d'Ãgua / Salvador Allende", "46: Alvorada / Penha", "46: Penha / Alvorada", "53A: Sulacap / Alvorada", "53A: Alvorada / Sulacap", "40A: Alvorada / Madureira", "40A: Madureira / Alvorada", "38N: FundÃ£o / Alvorada", "15: Recreio Shopping / Pingo d'Ãgua", "14: Campo Grande / Salvador Allende", "14: Salvador Allende / Campo Grande", "50: JardimOceÃ¢nico/ Terminal OlÃ­mpico", "50: Terminal OlÃ­mpico/ JardimOceÃ¢nico", "20: Santa Cruz / Salvador Allende", "20: Salvador Allende / Santa Cruz", "13: Mato Alto / Alvorada", "13: Alvorada /  Mato Alto", "53B: Jardim OceÃ¢nico / Sulacap", "53B: Sulacap / Jardim OceÃ¢nico", "29: Salvador Allende /  Jardim OceÃ¢nico", "29:  Jardim OceÃ¢nico/ Salvador Allende", "41: Recreio / Terminal Madureira", "41: Terminal Madureira / Recreio", "35A:  Jardim OceÃ¢nico/ Madureira", "35A: Madureira / Jardim OceÃ¢nico", "18: Recreio Shopping / Jardim OceÃ¢nico", "15: Pingo d'Ãgua / Recreio Shopping", "19: Salvador Allende / Pingo d'Ãgua", "18: Jardim OceÃ¢nico/ Recreio Shopping", "27: Salvador Allende / Mato Alto", "31A: Alvorada / Vicente de Carvalho", "31A: Vicente de Carvalho / Alvorada", "47:  Santa EfigÃªnia/ Madureira", "37: Alvorada / Tanque")
 
-### Transforma os dados em data frame, remove espaÃ§os e pontuaÃ§Ãµes, substitui a redaÃ§Ã£o
-### original pelo texto formatado. NÃ£o mexer.
+### Transforma os dados em data frame, remove espacos e pontuacoes, substitui a redacao
+### original pelo texto formatado. Nao modificar.
 dados <- as.data.frame(dados)
 
-dados$Trajeto <- gsub("[[:space:]]", "", dados$Trajeto)
-dados$Trajeto <- gsub("[[:punct:]]", "", dados$Trajeto)
-substituicao <- data.frame(from = original, to = novo)
-substituicao$from <- gsub("[[:space:]]", "", substituicao$from)
-substituicao$from <- gsub("[[:punct:]]", "", substituicao$from)
+dados$Trajeto <- gsub("[[:space:]]", "", dados$Trajeto) #remover espaco
+dados$Trajeto <- gsub("[[:punct:]]", "", dados$Trajeto) #remover pontuacao
+substituicao <- data.frame(from = original, to = novo) #tabela de correspondencia 
+substituicao$from <- gsub("[[:space:]]", "", substituicao$from) #remover espaco
+substituicao$from <- gsub("[[:punct:]]", "", substituicao$from) #remover pontuacao
 
 dados <- FindReplace(data = dados, Var = "Trajeto", replaceData = substituicao,
-                       from = "from", to = "to", exact = FALSE)
+                       from = "from", to = "to", exact = FALSE) #substituicao
 
 ### Recorta os dados por dia e os grava na pasta.
 
@@ -69,4 +68,4 @@ while (dia1 <= dia2){
   end_xls <- paste0(pasta, ano,"/",mes,"/",day,".xlsx")
   write.xlsx(Recortado,end_xls) 
   dia1 <- dia1 + days(1)
-}
+} #funcao para separar dias
