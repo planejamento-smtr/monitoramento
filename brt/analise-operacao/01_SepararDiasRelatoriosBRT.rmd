@@ -27,7 +27,7 @@ pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
 
 ########### AJUSTE DE ACORDO COM O NOME DO ARQUIVO
 
-end_rel <- paste0(pasta, ano, "/", mes, "/Viagens Janeiro.21.xlsx")
+end_rel <- paste0(pasta, ano, "/", mes, "/bruto/Viagens Janeiro.21.xlsx")
 
 ### Ler o arquivo. Nao modificar.
 
@@ -78,8 +78,7 @@ while (dia1 <= dia2){
   mes <- as.character(dia1, format = "%m")
   day <- as.character(dia1, format = "%d")
   Recortado <- dados[as.character(dados$Data, format="%Y-%m-%d")==as.character(dia1),]
-  end_xls <- paste0(pasta, ano,"/",mes,"/",day,".xlsx")
-  write.xlsx(Recortado,end_xls) 
+  write.xlsx(Recortado, paste0(pasta, ano,"/",mes,"/bruto/",day,".xlsx")) 
   dia1 <- dia1 + days(1)
 } #funcao para separar dias
 
