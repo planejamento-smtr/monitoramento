@@ -1,0 +1,394 @@
+#intalar e carregar pacotes
+
+#install.packages("openxlsx")
+#install.packages("dplyr")
+#install.packages("data.table")
+#install.packages("hms")
+#install.packages("readxl")
+#install.packages("lubridate")
+
+library(lubridate)
+library(readxl)
+library(hms)
+library(openxlsx)
+library(dplyr)
+library(data.table)
+
+########### INSIRA A PRIMEIRA DATA QUE SERA ANALISADA
+
+dia1 <- as.POSIXct("2021-01-01", format="%Y-%m-%d")
+
+########### INSIRA A ULTIMA DATA QUE SERA ANALISADA
+dia2 <- as.POSIXct("2021-01-26", format="%Y-%m-%d")
+
+########### Insira a pasta onde estÃ£o os arquivos
+## Importante seguir a hierarquia, com uma pasta por ano. Dentro desta pasta devera haver uma pasta
+## para cada mÃªs.
+
+pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
+
+### Executa enquanto o dia processado for anterior ao dia final.
+
+while (dia1 <= dia2){ 
+  
+  ### Extrai dia, mes e ano da data referencia.
+  
+  ano <- as.character(dia1, format = "%Y")
+  mes <- as.character(dia1, format = "%m")
+  day <- as.character(dia1, format = "%d")
+  
+  ### Cria variÃ¡veis com o local dos arquivos.
+  
+  end_dia <- paste0(pasta,ano,"/",mes,"/",day)
+  end_mes <- paste0(pasta,ano,"/",mes,"/")
+  end_xls <- paste0(pasta,ano,"/",mes,"/",day,".xlsx")
+  
+  # Abre o arquivo referente ao dia processado.
+  
+  dados <- read_excel(end_xls,trim_ws = TRUE)%>%
+    select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`) %>%
+    mutate(Partida_Real = as.character(gsub(".* ","", Partida_Real)), #transformar formato hora
+           Chegada_Real = as.character(gsub(".* ","", Chegada_Real)), #transformar formato hora
+           Tempo_Viagem = as.character(gsub(".* ","", Tempo_Viagem))) %>% #transformar formato hora
+    select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`) %>%
+    mutate(hora = lubridate::hour(lubridate::hms(Partida_Real))) #hora da partida
+  
+  ### Cria uma coluna com a linha do serviÃ§o. Importante para calcular o tempo ocioso no ciclo.
+  
+  dados$linha <- gsub(':.*',"",dados$Trajeto)
+  
+  ### Frota do dia, por linha e sentido.
+  
+  dia <- setDT(dados)[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto] %>% 
+    rename(frota_dia = N) 
+  
+  ### Frota do horario de pico da manha (hpm), por linha e sentido.
+  
+  hpm <- setDT(dados %>% filter(hora %in% c(5, 6, 7, 8)))[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto] %>% rename(frota_hpm = N)
+  
+  ### Frota do horario de pico da tarde (hpt), por linha e sentido.
+
+  hpt <- setDT(dados %>% filter(hora %in% c(16, 17, 18, 19)))[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto]  %>% rename(frota_hpt = N)
+  
+  ### Frota do horario entrepico (hep), por linha e sentido.
+  
+  hep <- setDT(dados %>% filter(hora %in% c(9, 10, 11, 12, 13, 14, 15)))[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto]  %>% rename(frota_hep = N)
+  
+  ### Une as informacoes numa tabela chamada RelatÃ³rio dos Trajetos.
+  
+  RelatorioTrajetos <- plyr::join_all(list(dia,hpm,hep,hpt), by='Trajeto', type='left')
+  
+  ### Extrai o codigo numerico da linha. [Ex: 10: Santa Cruz / Alvorada -> 10]
+  
+  RelatorioTrajetos$linha <- gsub(':.*',"",RelatorioTrajetos$Trajeto)
+  
+  ### Reordena a tabela, linha como primeira coluna. Facilitar visualizacao.
+  
+  RelatorioTrajetos <- RelatorioTrajetos %>%
+    select(linha, everything())
+  
+  ### Remove dados ja utilizados.
+  
+  rm(dia,hpm,hep,hpt)
+  
+  ### Viagens de cada veiculo ao longo do dia.
+  
+  vdia <- as.data.frame(table(dados$`Veiculo Real`)) %>% rename(Veiculo = Var1, viagens_dia = Freq)
+  
+  ### Viagens de cada veiculo no hpm.
+  
+  vhpm <- as.data.frame(table(dados[which(hora %in% c(5, 6, 7, 8))]$`Veiculo Real`))%>% 
+    rename(Veiculo = Var1, viagens_hpm = Freq)
+  
+  ### Viagens de cada veiculo no hpt.
+  
+  vhpt <- as.data.frame(table(dados[which(hora %in% c(16, 17, 18, 19))]$`Veiculo Real`))%>% 
+    rename(Veiculo = Var1, viagens_hpt = Freq)
+  
+  ### Viagens de cada veiculo no hep.
+  
+  vhep <- as.data.frame(table(dados[which(hora %in% c(9, 10, 11, 12, 13, 14, 15))]$`Veiculo Real`))%>% 
+    rename(Veiculo = Var1, viagens_hep = Freq)
+  
+  ### Horario minimo e mÃ¡ximo de operacao do veiculo, no dia.
+  
+  vminmax <- setDT(dados)[,.(min = min(hora),
+                             max = max(hora)), 
+                          by = `Veiculo Real`] %>% 
+    rename(Veiculo = `Veiculo Real`, h_min = min, h_max = max)
+  
+  ### Tempo de operacao. Diferenca entre o horario final e o horario inicial.
+  
+  vminmax$tempo_operac <- vminmax$h_max-vminmax$h_min
+  
+  ### Cria uma tabela com as linhas operadas por carro ao longo do dia.
+  
+  linhas_carro <- dados %>% group_by(`Veiculo Real`) %>% summarise(linha = list(unique(linha))) %>% 
+    rename(Veiculo = `Veiculo Real`)
+  
+  ### Conta numero de linhas operadas por carro ao longo do dia.
+  
+  for (l in 1:nrow(linhas_carro)){
+    linhas_carro$quantidade_linhas[[l]] <- length(linhas_carro$linha[[l]])
+  }
+  
+  ### Reordena a tabela.
+  
+  linhas_carro <- linhas_carro[,c(1,3,2)]
+  
+  ### Lista trajetos operados por carro ao longo do dia.
+  
+  trajetos_carro <- dados %>% group_by(`Veiculo Real`) %>% summarise(Trajeto = list(unique(Trajeto))) %>% 
+    rename(Veiculo = `Veiculo Real`)
+  
+  ### Cria uma tabela chamada Relatorio dos Carros, com informaÃ§Ãµes processadas sobre cada veiculo.
+  
+  RelatorioCarros <- plyr::join_all(list(vdia, vhpm, vhep, vhpt, vminmax,linhas_carro,trajetos_carro), by='Veiculo', type='left')
+  
+  ### Substitui valores NA por 0.
+  
+  RelatorioCarros[is.na(RelatorioCarros)] <- 0
+  
+  ### Remove tabelas jÃ¡ utilizadas.
+  
+  rm(vdia,vhpm,vhep,vhpt,vminmax)
+  
+  ### HorÃ¡rio da partida.
+  
+  setDT(dados)[, horario := lubridate::hms(Partida_Real)] # transformar formato da hora
+  
+  ### HorÃ¡rio da partida, em segundos.
+  
+  dados[, horario_s := lubridate::hour(horario)*3600 + lubridate::minute(horario)*60 + lubridate::second(horario)] # converter em segundos
+  
+  ### Intervalo entre uma partida e outra, em segundos.
+  
+  dados[, Intervalo_partida := (horario_s-lag(horario_s))] # calcular intervalo
+  
+  ### Ajusta erros.
+  
+  dados <- dados %>% mutate(Intervalo_partida = ifelse(Intervalo_partida >0, Intervalo_partida, NA))
+  
+  ### Converte intervalos em padrao Hora Minuto Segundo, para faciltar compreensao.
+  
+  dados <- dados %>% mutate(Intervalo_partida_fim = seconds_to_period(Intervalo_partida)) # converter intervalo em minutos
+  
+  ### CÃ¡lculo de intervalos.
+  
+  ## Seleciona dados por faixa horÃ¡ria correspondente.
+  
+  intervalos_hpm <- dados %>% filter(hora %in% c(5, 6, 7, 8)) %>% select(-c(horario_s, `KM Executado`))
+  
+  intervalos_hep <- dados %>% filter(hora %in% c(9,10,11,12,13,14,15)) %>% 
+    select(-c(horario_s, `KM Executado`))
+  
+  intervalos_hpt <- dados %>% filter(hora %in% c(16, 17, 18, 19)) %>% 
+    select(-c(horario_s, `KM Executado`))
+  
+  ## Calcula intervalo medio.
+  
+  intervalos_manha <- intervalos_hpm %>% group_by(Trajeto) %>% 
+    summarise_at(vars(Intervalo_partida), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(Intervalo_partida = ifelse(Intervalo_partida > 3600, NA, Intervalo_partida)) %>% 
+    mutate(Intervalo_partida = seconds_to_period(Intervalo_partida)) %>% 
+    mutate_at(vars(Intervalo_partida), funs(round(., 0))) %>% 
+    rename(intervalo_medio_hpm = Intervalo_partida)
+  
+  intervalos_ep <- intervalos_hep %>% group_by(Trajeto) %>% 
+    summarise_at(vars(Intervalo_partida), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(Intervalo_partida = ifelse(Intervalo_partida > 3600, NA, Intervalo_partida)) %>%  
+    mutate(Intervalo_partida = seconds_to_period(Intervalo_partida)) %>% 
+    mutate_at(vars(Intervalo_partida), funs(round(., 0))) %>% 
+    rename(intervalo_medio_hep = Intervalo_partida)
+  
+  intervalos_tarde <- intervalos_hpt %>% group_by(Trajeto) %>% 
+    summarise_at(vars(Intervalo_partida), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(Intervalo_partida = ifelse(Intervalo_partida > 3600, NA, Intervalo_partida)) %>% 
+    mutate(Intervalo_partida = seconds_to_period(Intervalo_partida)) %>% 
+    mutate_at(vars(Intervalo_partida), funs(round(., 0))) %>% 
+    rename(intervalo_medio_hpt = Intervalo_partida)
+  
+  ### Tempo de Ciclo
+  
+  ## Filtra carros por faixa horaria.
+  
+  carros_hpm <- dados %>% filter(hora %in% c(5, 6, 7, 8)) 
+  
+  ## Calcula tempo entre partida e partida anterior, por carro, considerando o mesmo trajeto.
+  
+  carros_hpm <- 
+    carros_hpm %>%
+    group_by(`Veiculo Real`,Trajeto) %>%
+    mutate(lag.value = (horario_s-lag(horario_s)))
+  
+  ## Sintetiza tempo medio de ciclo.
+  
+  Ciclo_hpm <- carros_hpm %>% group_by(Trajeto) %>% 
+    summarise_at(vars(lag.value), funs(mean(., na.rm=TRUE))) %>% 
+    mutate_at(vars(lag.value), funs(round(., 0))) %>% 
+    rename(ciclo_medio_hpm = lag.value) %>% mutate(ciclo_medio_hpm = seconds_to_period(ciclo_medio_hpm))
+  
+  ## Calcula tempo medio de viagem.
+  
+  carros_hpm$TempoMedioViag <- as.integer(as.ITime(carros_hpm$Tempo_Viagem, format= "%H:%M:%S"))
+  
+  ## Calcula tempo medio por perna (trajeto; metade de um ciclo).
+  
+  Perna_hpm <- carros_hpm %>% group_by(Trajeto) %>% 
+    summarise_at(vars(TempoMedioViag), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(TempoMedioViag = seconds_to_period(TempoMedioViag)) %>% 
+    mutate_at(vars(TempoMedioViag), funs(round(., 0))) %>% 
+    rename(perna_medio_hpm = TempoMedioViag)
+  
+  ##### Mesmos processos que no caso anterior, mudando apenas a faixa horaria.
+  
+  carros_hep <- dados %>% filter(hora %in% c(9,10,11,12,13,14,15))
+  carros_hep <- 
+    carros_hep %>%
+    group_by(`Veiculo Real`,Trajeto) %>%
+    mutate(lag.value = (horario_s-lag(horario_s)))
+  
+  Ciclo_hep <- carros_hep %>% group_by(Trajeto) %>% 
+    summarise_at(vars(lag.value), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(lag.value = seconds_to_period(lag.value)) %>% mutate_at(vars(lag.value), funs(round(., 0))) %>% 
+    rename(ciclo_medio_hep = lag.value)
+  
+  carros_hep$TempoMedioViag <- as.integer(as.ITime(carros_hep$Tempo_Viagem, format= "%H:%M:%S"))
+  
+  Perna_hep <- carros_hep %>% group_by(Trajeto) %>% 
+    summarise_at(vars(TempoMedioViag), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(TempoMedioViag = seconds_to_period(TempoMedioViag)) %>% mutate_at(vars(TempoMedioViag), funs(round(., 0))) %>% 
+    rename(perna_medio_hep = TempoMedioViag)
+  
+  carros_hpt <- dados %>% filter(hora %in% c(16,17,18,19))
+  carros_hpt <- 
+    carros_hpt %>%
+    group_by(`Veiculo Real`,Trajeto) %>%
+    mutate(lag.value = (horario_s-lag(horario_s)))
+  
+  Ciclo_hpt <- carros_hpt %>% group_by(Trajeto) %>% 
+    summarise_at(vars(lag.value), funs(mean(., na.rm=TRUE))) %>% mutate(lag.value = seconds_to_period(lag.value)) %>% 
+    mutate_at(vars(lag.value), funs(round(., 0))) %>% rename(ciclo_medio_hpt = lag.value)
+  
+  carros_hpt$TempoMedioViag <- as.integer(as.ITime(carros_hpt$Tempo_Viagem, format= "%H:%M:%S"))
+  
+  Perna_hpt <- carros_hpt %>% group_by(Trajeto) %>% 
+    summarise_at(vars(TempoMedioViag), funs(mean(., na.rm=TRUE))) %>% 
+    mutate(TempoMedioViag = seconds_to_period(TempoMedioViag)) %>% mutate_at(vars(TempoMedioViag), funs(round(., 0))) %>% 
+    rename(perna_medio_hpt = TempoMedioViag)
+  
+  ### Mescla informaÃ§Ãµes processadas com o RelatÃ³rio dos Trajetos criado no inicio do codigo.
+  
+  RelatorioTrajetos <- plyr::join_all(list(RelatorioTrajetos,intervalos_manha,intervalos_ep, 
+                                           intervalos_tarde,Perna_hpm, Perna_hep, Perna_hpt, 
+                                           Ciclo_hpm,Ciclo_hep,Ciclo_hpt), by='Trajeto', type='left')
+  
+  ### Calcula a media do tempo de viagens de ida e volta, por trajeto, e insere no Relatorio de Trajetos.
+  
+  TempoViagensManha <- RelatorioTrajetos %>% group_by(linha) %>% 
+    summarize(TempoOciosoManha = sum(period_to_seconds(perna_medio_hpm)))
+  
+  TempoViagensEP <- RelatorioTrajetos %>% group_by(linha) %>% 
+    summarize(TempoOciosoEntrepico = sum(period_to_seconds(perna_medio_hep)))
+  
+  TempoViagensTarde <- RelatorioTrajetos %>% group_by(linha) %>% 
+    summarize(TempoOciosoTarde = sum(period_to_seconds(perna_medio_hpt)))
+  
+  RelatorioTrajetos <- plyr::join_all(list(RelatorioTrajetos,TempoViagensManha,TempoViagensEP,
+                                           TempoViagensTarde), by='linha', type='left')
+  
+  ### Converte o tempo medio de viagens em tempo ocioso, atraves da diferenca do tempo de ciclo e do tempo medio de viagem.
+  
+  RelatorioTrajetos <- RelatorioTrajetos %>% 
+    mutate(TempoOciosoManha = seconds_to_period(period_to_seconds(ciclo_medio_hpm) - TempoOciosoManha)) %>%
+    mutate(TempoOciosoEntrepico = seconds_to_period(period_to_seconds(ciclo_medio_hep) - TempoOciosoEntrepico)) %>%
+    mutate(TempoOciosoTarde = seconds_to_period(period_to_seconds(ciclo_medio_hpt) - TempoOciosoTarde))
+  
+  ### Funcao para transformar NaN em NA. Detalhe para gravacao correta do arquivo Excel.
+  
+  is.nan.data.frame <- function(x)
+    do.call(cbind, lapply(x, is.nan))
+  
+  RelatorioTrajetos[is.nan(RelatorioTrajetos)] <- NA
+  
+  ### Alteracao dos nomes das colunas do relatorio dos trajetos, para facilitar leitura humana no Excel.
+  
+  colnames(RelatorioTrajetos) <- c("Linha","Trajeto","Frota total no dia","Frota pico manha","Frota entrepico",
+                                   "Frota pico tarde","Intervalo medio pico manha","Intervalo medio entrepico",
+                                   "Intervalo medio pico tarde","Trecho medio pico manha", "Trecho medio entrepico",
+                                   "Trecho medio pico tarde", "Ciclo medio pico manha", "Ciclo medio entrepico", 
+                                   "Ciclo medio pico tarde", "Tempo ocioso manha","Tempo ocioso entrepico", "Tempo ocioso pico tarde")
+  
+  ### Converte variaveis de tempo de HMS para minutos. Facilita cÃ¡lculos posteriores no Excel.
+  
+  RelTrajCont <- RelatorioTrajetos
+  RelTrajCont[,c(7:18)] <- lapply(RelTrajCont[,c(7:18)], period_to_seconds)
+  RelTrajCont[,c(7:18)] <- round(RelTrajCont[,c(7:18)]/60,2)
+  
+  ### Escreve os relatorios na pasta definida no inicio do codigo.
+  
+  write.xlsx(RelatorioTrajetos, paste0(end_dia,"_Relatorio_Trajetos_Viz.xlsx"))
+  write.xlsx(RelTrajCont, paste0(end_dia,"_Relatorio_Trajetos_Calc.xlsx"))
+  write.xlsx(RelatorioCarros, paste0(end_dia,"_Relatorio_Carros.xlsx"))
+  
+  ### Remove objetos que nao serao utilizados.
+  
+  rm(list=setdiff(ls(), c("dia1", "dia2", "dados", "carros_hpm", "carros_hep", "carros_hpt", "end_mes", 
+                          "Resumo", "pasta")))
+  
+  ### Processamento de dados para criacao de um resumo.
+  
+  carros_tot <- length(unique(dados$`Veiculo Real`))
+  carros_manha <- length(unique(carros_hpm$`Veiculo Real`))
+  perc_carros_not_manha <- round((carros_tot-carros_manha)/carros_tot*100,2)
+  carros_tarde <- length(unique(carros_hpt$`Veiculo Real`))
+  perc_carros_not_tarde <- round((carros_tot-carros_tarde)/carros_tot*100,2)
+  
+  carros_unic_manha <- as.data.table(table(carros_hpm$`Veiculo Real`))
+  carros_unic_manha <- carros_unic_manha[carros_unic_manha$N==1,]
+  carros_unic_manha <- nrow(carros_unic_manha)
+  perc_carros_unic_manha <- round((carros_unic_manha)/carros_tot*100,2)
+  
+  carros_unic_tarde <- as.data.table(table(carros_hpt$`Veiculo Real`))
+  carros_unic_tarde <- carros_unic_tarde[carros_unic_tarde$N==1,]
+  carros_unic_tarde <- nrow(carros_unic_tarde)
+  perc_carros_unic_tarde <- round((carros_unic_tarde)/carros_tot*100,2)
+  
+  ### Uniao dos dados em  tabela de resumo.
+  
+  Resumo_dia <- data.table(as.character(dia1, format="%d/%m/%Y"),carros_tot,carros_manha,
+                           perc_carros_not_manha,carros_tarde,perc_carros_not_tarde,carros_unic_manha,
+                           perc_carros_unic_manha,carros_unic_tarde,perc_carros_unic_tarde)
+  
+  ### Renomeacao das colunas da tabela de resumo, para facilitar leitura humana.
+  
+  colnames(Resumo_dia) <- c("Data","Frota em operacao", "Carros operando no pico da manha",
+                            "Percentual de carros fora de operacao no pico da manha",
+                            "Carros operando no pico da tarde",
+                            "Percentual de carros fora de operacao no pico da tarde",
+                            "Carros com apenas uma viagem no pico da manha", 
+                            "Percentual de carros com apenas uma viagem no pico da manha",
+                            "Carros com apenas uma viagem no pico da tarde", 
+                            "Percentual de carros com apenas uma viagem no pico da tarde")
+  
+  ### Se tabela de resumo do mes jÃ¡ existe, acrescente os dados da tabela de resumo do dia. 
+  ### Se nao existe, crie a tabela de resumo do mes.
+  
+  if (exists("Resumo")){
+    Resumo <- rbind(Resumo,Resumo_dia)
+  } else {
+    Resumo <- Resumo_dia
+  }
+  
+  ### Escreve resumo.
+  
+  write.xlsx(Resumo, paste0(end_mes,"Resumo.xlsx"))
+  
+  ### Acrescenta mais um dia na data de referencia.
+  
+  dia1 <- dia1 + days(1)
+  
+  ### Remove variaveis nao utilizadas.
+  
+  rm(list=setdiff(ls(), c("dia1", "dia2", "Resumo", "pasta")))
+}
