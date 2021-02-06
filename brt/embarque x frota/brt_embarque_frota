@@ -1,0 +1,146 @@
+#Carregar pacotes
+library(openxlsx)
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(bizdays)
+library(Hmisc)
+library(hrbrthemes)
+
+
+# Definir diretorio
+setwd('D:/PCRJ/BRT/dados/')
+
+# Abrir arquivo de embarque
+embarque <- read_excel('./demanda/Carregamento BRT 2021.01.01 - 2021.02.04.xlsx', trim_ws = TRUE) %>%
+  mutate(Hora = as.character(gsub(".* ","", Hora)),
+         Data = as.character(Data)) %>%
+  dplyr::rename(Embarques = `Qtd Transações`) %>%
+  filter(Data %nin% c("2021-01-01", "2021-01-02", "2021-01-03", "2021-01-09", "2021-01-10", 
+                      "2021-01-16", "2021-01-17", "2021-01-20", "2021-01-23", "2021-01-24",
+                      "2021-01-30", "2021-01-31", "2021-02-01", "2021-02-02", "2021-02-03", 
+                      "2021-02-04"))
+
+
+# Soma embarque por hora
+embarque_dt <- setDT(embarque)[, keyby =.(Data, Hora), .(Embarques = sum(Embarques))] %>%
+  select(Hora, Data, Embarques) %>% mutate(Data = as.character(Data)) %>%
+  mutate(Dia = substr(Data, 9, 10), 
+         H = substr(Hora, 0, 2))
+
+
+
+# Grafico de embarque por hora
+ggplot(embarque_dt)+
+  geom_line(aes(x = Hora, y = Embarques, group = Data, color = as.factor(Data)))+
+  theme(panel.background = element_blank(),
+        axis.line = element_line(size = 0.5),
+        legend.position = 'bottom',
+        legend.title = element_blank())+
+  ggtitle("Embarques no BRT por hora em dias úteis de janeiro 2021")+
+  coord_cartesian(ylim=c(0,20000))
+
+
+# Soma embarques por dia e pico
+embarque_dia <- setDT(embarque_dt)[, .(periodo = "Dia",
+                                       Embarques = sum(Embarques)),
+                                   by = .(Dia, Data)]
+
+embarque_manha <- setDT(embarque_dt %>% filter(H %in% c("05", "06", "07", "08")))[, .(periodo = "Pico manhã",
+                                       Embarques = sum(Embarques)), 
+                                       by = .(Dia, Data)]
+
+embarque_tarde <- setDT(embarque_dt %>% filter(H %in% c("16", "17", "18", "19")))[, .(periodo = "Pico tarde",
+                                                                                      Embarques = sum(Embarques)), 
+                                                                                  by = .(Dia, Data)]
+
+# Inclurir em tabelunica
+fim <- rbind(embarque_dia, embarque_manha, embarque_tarde) %>%
+  mutate(variavel =  "Embarque", 
+         total = Embarques,
+         dia = substr(Data, 9, 10)) %>%
+  select(Data, dia, periodo, variavel, total)
+
+
+# Abrir dados frota
+frota <- read.xlsx('./operacoes/2021/01/tratado/Resumo.xlsx')
+
+data_long <- gather(frota, periodo, frota, 
+                    Frota.em.operação:Percentual.de.carros.com.apenas.uma.viagem.no.pico.da.tarde, factor_key=TRUE) 
+
+dados_frota <- data_long %>% 
+  filter(periodo %in% c("Frota.em.operação", 
+                        "Carros.operando.no.pico.da.manhã",
+                        "Carros.operando.no.pico.da.tarde"))%>%
+  mutate(data = as.Date(Data,"%d/%m/%Y"),
+         periodo = ifelse(periodo == "Frota.em.operação", "Dia",
+                          ifelse(periodo == "Carros.operando.no.pico.da.manhã", "Pico manhã",
+                                 ifelse(periodo == "Carros.operando.no.pico.da.tarde", "Pico tarde", periodo))))%>%
+  filter(Data %nin% c("01/01/2021", "02/01/2021", "03/01/2021", "09/01/2021", "10/01/2021", "16/01/2021", 
+                      "16/01/2021", "17/01/2021", "20/01/2021", "23/01/2021", "24/01/2021"))
+
+
+frota <- dados_frota %>% 
+  select(data, periodo, frota) %>%
+  mutate(Data = as.character(data),
+         variavel =  "Frota", 
+         total = frota, 
+         dia = substr(Data, 9, 10)) %>%
+  select(Data, dia, periodo, variavel, total)
+         
+
+final <- rbind(frota, fim)
+
+
+# grafico dia inteiro
+ggplot(final %>% filter(periodo %nin% c("Pico manhã", "Pico tarde"),
+                        dia %nin% c(27, 28, 29)),
+       aes(x=dia, y=total, group=variavel)) +
+  geom_line(aes(color=periodo))+
+  geom_point(aes(color=periodo))+
+  geom_text(aes(label=total), vjust=0, nudge_y = 3, check_overlap = TRUE)+
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.line.x = element_line(),
+        axis.line.y = element_line())+
+  geom_smooth(method = "lm")+
+  ggtitle("Embarque e frota em dia úteis de janeiro")+
+  facet_wrap(~variavel, scales="free", ncol = 2)
+
+# grafico pico da manha
+ggplot(final %>% filter(periodo %in% c("Pico manhã"),
+                        dia %nin% c(27, 28, 29)),
+       aes(x=dia, y=total, group=variavel)) +
+  geom_line(aes(color=periodo))+
+  geom_point(aes(color=periodo))+
+  geom_text(aes(label=total), vjust=0, nudge_y = 3, check_overlap = TRUE)+
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.line.x = element_line(),
+        axis.line.y = element_line())+
+  geom_smooth(method = "lm")+
+  ggtitle("Embarque e frota no pico da manhã em dia úteis de janeiro")+
+  facet_wrap(~variavel, scales="free_y")
+
+
+# grafico pico da tarde
+ggplot(final %>% filter(periodo %in% c("Pico tarde"),
+                        dia %nin% c(27, 28, 29)),
+       aes(x=dia, y=total, group=variavel)) +
+  geom_line(aes(color=periodo))+
+  geom_point(aes(color=periodo))+
+  geom_text(aes(label=total), vjust=0, nudge_y = 3, check_overlap = TRUE)+
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.line.x = element_line(),
+        axis.line.y = element_line())+
+  geom_smooth(method = "lm")+
+  ggtitle("Embarque e frota no pico da tarde em dia úteis de janeiro")+
+  facet_wrap(~variavel, scales="free_y")
