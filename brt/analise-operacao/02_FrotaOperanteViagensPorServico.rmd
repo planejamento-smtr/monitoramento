@@ -38,7 +38,7 @@ while (dia1 <= dia2){
   ### Cria variÃ¡veis com o local dos arquivos.
   
   end_dia <- paste0(pasta,ano,"/",mes,"/tratado/",day)
-  end_mes <- paste0(pasta,ano,"/",mes,"/")
+  end_mes <- paste0(pasta,ano,"/",mes,"/tratado/")
   end_xls <- paste0(pasta,ano,"/",mes,"/bruto/",day,".xlsx")
   
   # Abre o arquivo referente ao dia processado.
@@ -65,7 +65,7 @@ while (dia1 <= dia2){
   hpm <- setDT(dados %>% filter(hora %in% c(5, 6, 7, 8)))[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto] %>% rename(frota_hpm = N)
   
   ### Frota do horÃ¡rio de pico da tarde (hpt), por linha e sentido.
-
+  
   hpt <- setDT(dados %>% filter(hora %in% c(16, 17, 18, 19)))[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto]  %>% rename(frota_hpt = N)
   
   ### Frota do horÃ¡rio entrepico (hep), por linha e sentido.
@@ -284,13 +284,15 @@ while (dia1 <= dia2){
   ### Calcula a mÃ©dia do tempo de viagens de ida e volta, por trajeto, e insere no RelatÃ³rio de Trajetos.
   
   TempoViagensManha <- RelatorioTrajetos %>% group_by(linha) %>% 
-    summarize(TempoOciosoManha = sum(period_to_seconds(perna_medio_hpm)))
+    summarise(TempoOciosoManha = sum(period_to_seconds(perna_medio_hpm)))
+  
+  sum(period_to_seconds(RelatorioTrajetos$perna_medio_hpm))
   
   TempoViagensEP <- RelatorioTrajetos %>% group_by(linha) %>% 
-    summarize(TempoOciosoEntrepico = sum(period_to_seconds(perna_medio_hep)))
+    summarise(TempoOciosoEntrepico = sum(period_to_seconds(perna_medio_hep)))
   
   TempoViagensTarde <- RelatorioTrajetos %>% group_by(linha) %>% 
-    summarize(TempoOciosoTarde = sum(period_to_seconds(perna_medio_hpt)))
+    summarise(TempoOciosoTarde = sum(period_to_seconds(perna_medio_hpt)))
   
   RelatorioTrajetos <- plyr::join_all(list(RelatorioTrajetos,TempoViagensManha,TempoViagensEP,
                                            TempoViagensTarde), by='linha', type='left')
@@ -364,10 +366,12 @@ while (dia1 <= dia2){
                             "Percentual de carros fora de operaÃ§Ã£o no pico da manhÃ£",
                             "Carros operando no pico da tarde",
                             "Percentual de carros fora de operaÃ§Ã£o no pico da tarde",
-                            "Carros com apenas uma viagem no pico da manhÃ£", 
+                            "Carros com apenas uma viagem no pico da manhÃ£",
                             "Percentual de carros com apenas uma viagem no pico da manhÃ£",
-                            "Carros com apenas uma viagem no pico da tarde", 
+                            "Carros com apenas uma viagem no pico da tarde",
                             "Percentual de carros com apenas uma viagem no pico da tarde")
+  
+  message(paste0(dia1, " finalizado"))
   
   ### Se tabela de resumo do mÃªs jÃ¡ existe, acrescente os dados da tabela de resumo do dia. 
   ### Se nÃ£o existe, crie a tabela de resumo do mÃªs.
@@ -382,7 +386,7 @@ while (dia1 <= dia2){
   
   write.xlsx(Resumo, paste0(end_mes,"Resumo.xlsx"))
   
-  ### Acrescenta mais um dia na data de referÃªncia.
+  ### Acrescenta mais um dia na data de referencia.
   
   dia1 <- dia1 + days(1)
   
