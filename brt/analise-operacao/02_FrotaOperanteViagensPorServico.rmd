@@ -44,21 +44,17 @@ while (dia1 <= dia2){
   # Abre o arquivo referente ao dia processado.
   
   dados <- read_excel(end_xls,trim_ws = TRUE)%>%
-    select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`) %>%
     mutate(Partida_Real = as.character(gsub(".* ","", Partida_Real)), #transformar formato hora
            Chegada_Real = as.character(gsub(".* ","", Chegada_Real)), #transformar formato hora
-           Tempo_Viagem = as.character(gsub(".* ","", Tempo_Viagem))) %>% #transformar formato hora
-    select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`) %>%
-    mutate(hora = lubridate::hour(lubridate::hms(Partida_Real))) #hora da partida
+           Tempo_Viagem = as.character(gsub(".* ","", Tempo_Viagem)), #transformar formato hora
+           hora = lubridate::hour(lubridate::hms(Partida_Real)),  #coluna com hora de partida
+           linha = gsub(':.*',"", Trajeto)) %>%  #coluna com linha
+    select(Data, linha, Trajeto, `Veiculo Real`, Partida_Real, hora, Chegada_Real, Tempo_Viagem, `KM Executado`)
   
-  ### Cria uma coluna com a linha do serviÃ§o. Importante para calcular o tempo ocioso no ciclo.
-  
-  dados$linha <- gsub(':.*',"",dados$Trajeto)
   
   ### Frota do dia, por linha e sentido.
   
-  dia <- setDT(dados)[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto] %>% 
-    rename(frota_dia = N) 
+  dia <- setDT(dados)[, .N, keyby=list(Trajeto, `Veiculo Real`)][, .N, by=Trajeto] %>% rename(frota_dia = N) 
   
   ### Frota do horÃ¡rio de pico da manhÃ£ (hpm), por linha e sentido.
   
@@ -74,18 +70,11 @@ while (dia1 <= dia2){
   
   ### Une as informaÃ§Ãµes numa tabela chamada RelatÃ³rio dos Trajetos.
   
-  RelatorioTrajetos <- plyr::join_all(list(dia,hpm,hep,hpt), by='Trajeto', type='left')
-  
-  ### Extrai o cÃ³digo numÃ©rico da linha. [Ex: 10: Santa Cruz / Alvorada -> 10]
-  
-  RelatorioTrajetos$linha <- gsub(':.*',"",RelatorioTrajetos$Trajeto)
-  
-  ### Reordena a tabela, linha como primeira coluna. Facilitar visualizaÃ§Ã£o.
-  
-  RelatorioTrajetos <- RelatorioTrajetos %>%
+  RelatorioTrajetos <- plyr::join_all(list(dia,hpm,hep,hpt), by='Trajeto', type='left') %>%
+    mutate(linha = gsub(':.*',"", Trajeto)) %>%
     select(linha, everything())
   
-  ### Remove dados jÃ¡ utilizados.
+  ### Remove dados ja utilizados.
   
   rm(dia,hpm,hep,hpt)
   
@@ -113,11 +102,9 @@ while (dia1 <= dia2){
   vminmax <- setDT(dados)[,.(min = min(hora),
                              max = max(hora)), 
                           by = `Veiculo Real`] %>% 
-    rename(Veiculo = `Veiculo Real`, h_min = min, h_max = max)
+    rename(Veiculo = `Veiculo Real`, h_min = min, h_max = max) %>%
+    mutate(tempo_operac = h_max-h_min)
   
-  ### Tempo de operaÃ§Ã£o. DiferenÃ§a entre o horÃ¡rio final e o horÃ¡rio inicial.
-  
-  vminmax$tempo_operac <- vminmax$h_max-vminmax$h_min
   
   ### Cria uma tabela com as linhas operadas por carro ao longo do dia.
   
@@ -161,7 +148,7 @@ while (dia1 <= dia2){
   
   ### Intervalo entre uma partida e outra, em segundos.
   
-  dados[, Intervalo_partida := (horario_s-lag(horario_s))] # calcular intervalo
+  dados[, Intervalo_partida := (horario_s-lag(horario_s))] # calcular intervalo ####### COMO GARANTIR QUE É DO MESMO SERVIÇO???
   
   ### Ajusta erros.
   
@@ -313,11 +300,11 @@ while (dia1 <= dia2){
   
   ### AlteraÃ§Ã£o dos nomes das colunas do relatÃ³rio dos trajetos, para facilitar leitura humana no Excel.
   
-  colnames(RelatorioTrajetos) <- c("Linha","Trajeto","Frota total no dia","Frota pico manhÃ£","Frota entrepico",
-                                   "Frota pico tarde","Intervalo mÃ©dio pico manhÃ£","Intervalo mÃ©dio entrepico",
-                                   "Intervalo mÃ©dio pico tarde","Trecho mÃ©dio pico manhÃ£", "Trecho mÃ©dio entrepico",
-                                   "Trecho mÃ©dio pico tarde", "Ciclo mÃ©dio pico manhÃ£", "Ciclo mÃ©dio entrepico", 
-                                   "Ciclo mÃ©dio pico tarde", "Tempo ocioso manhÃ£","Tempo ocioso entrepico", "Tempo ocioso pico tarde")
+  colnames(RelatorioTrajetos) <- c("Linha","Trajeto","Frota total no dia","Frota pico manha","Frota entrepico",
+                                   "Frota pico tarde","Intervalo medio pico manha","Intervalo medio entrepico",
+                                   "Intervalo medio pico tarde","Trecho medio pico manha", "Trecho medio entrepico",
+                                   "Trecho medio pico tarde", "Ciclo medio pico manha", "Ciclo mÃ©dio entrepico", 
+                                   "Ciclo medio pico tarde", "Tempo ocioso manha","Tempo ocioso entrepico", "Tempo ocioso pico tarde")
   
   ### Converte variÃ¡veis de tempo de HMS para minutos. Facilita cÃ¡lculos posteriores no Excel.
   
