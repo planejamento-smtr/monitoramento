@@ -1,4 +1,3 @@
-### Carregar pacotes
 library(openxlsx)
 library(readxl)
 library(lubridate)
@@ -9,19 +8,20 @@ library(dplyr)
 
 dia1 <- as.POSIXct("2021-01-01", format="%Y-%m-%d")
 
-########### INSIRA A ULTIMA DATA QUE SERA ANALISADA
+########### INSIRA A ÃLTIMA DATA QUE SERA ANALISADA
 
 dia2 <- as.POSIXct("2021-01-26", format="%Y-%m-%d")
 
 
 
-### Pega o ano e o mes da data 1. Nao modificar.
+### Pega o ano e o mes da data 1. Nao mexer.
 
 ano <- as.character(dia1, format = "%Y")
 mes <- as.character(dia1, format = "%m")
 
 ########### INSIRA A PASTA ONDE ESTAO OS ARQUIVOS
-## Importante seguir a hierarquia, com uma pasta por ano. Dentro desta pasta devera haver uma pasta para cada mes.
+## Importante seguir a hierarquia, com uma pasta por ano. Dentro desta pasta deverÃ¡ haver uma pasta
+## para cada mes.
 
 pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
 
@@ -29,47 +29,66 @@ pasta <- paste0('D:/PCRJ/BRT/dados/operacoes/')
 
 end_rel <- paste0(pasta, ano, "/", mes, "/bruto/Viagens Janeiro.21.xlsx")
 
-### Ler o arquivo. Nao modificar.
 
-dados <- read_excel(end_rel,trim_ws = TRUE)%>%
-  select(Data, Trajeto, `Veiculo Real`, `Partida Real`, `Chegada Real`, `Tempo Viagem`, `KM Executado`) %>%
-  #return the TIME column to the way it is written in Excel
+### Ler o arquivo. Nao mexer.
+unique(dados$Linha)
+dados <- read_excel(end_rel,trim_ws = TRUE, progress = readxl_progress())%>%
   mutate(Partida_Real = as.character(gsub(".* ","", `Partida Real`)), #transformar formato hora
          Chegada_Real = as.character(gsub(".* ","", `Chegada Real`)), #transformar formato hora
-         Tempo_Viagem = as.character(gsub(".* ","", `Tempo Viagem`))) %>% #transformar formato hora
+         Tempo_Viagem = as.character(gsub(".* ","", `Tempo Viagem`)), #transformar formato hora
+         Hora_partida = lubridate::hour(lubridate::hms(Partida_Real))) %>% #criar coluna com hora
   #format the date column
-  select(Data, Trajeto, `Veiculo Real`, Partida_Real, Chegada_Real, Tempo_Viagem, `KM Executado`)
+  select(Data, Trajeto, `Veiculo Real`, Partida_Real, Hora_partida, Chegada_Real, Tempo_Viagem, `KM Executado`)
 
 ########### Padronizacao da redacao dos trajetos. Importante para obter o valor correto da linha.
 ### Caso existam novos servicos sera necessario atualizar o codigo.
 
 original <- unique(dados$Trajeto)
 
-novo <- c("10: Alvorada / Santa Cruz", "10: Santa Cruz / Alvorada", "LECD33: Campo Grande / Santa Cruz", 
-          "42A: Galeao / Madureira", "42E: Galeao / Santa Efigenia", "LECD33: Santa Cruz / Campo Grande", 
-          "12: Pingo d'Água / Alvorada", "11N: Santa Cruz / Alvorada", "11N: Alvorada / Santa Cruz", 
-          "51A: Vila Militar / Terminal Alvorada", "12: Alvorada / Pingo d'Água", "51A:  Terminal Alvorada / Vila Militar", 
-          "51: Terminal Recreio / Vila Militar", "51: Vila Militar / Terminal Recreio", "38A: Galeao / Alvorada", 
-          "38A: Alvorada / Galeao", "27: Mato Alto: Salvador Allende", "25A:  Mato Alto /  Alvorada", 
-          "25A:  Alvorada / Mato Alto", "35: Madureira / Alvorada", "35: Alvorada  /  Madureira", 
-          "22: Alvorada / Jardim Oceanico", "22: Jardim Oceanico/ Alvorada", "42A: Madureira / Galeao", 
-          "19: Pingo d'Água / Salvador Allende", "46: Alvorada / Penha", "46: Penha / Alvorada", "53A: Sulacap / Alvorada", 
-          "53A: Alvorada / Sulacap", "40A: Alvorada / Madureira", "40A: Madureira / Alvorada", "38N: Fundao / Alvorada", 
-          "15: Recreio Shopping / Pingo d'Água", "14: Campo Grande / Salvador Allende", "14: Salvador Allende / Campo Grande", 
-          "50: Jardim Oceanico/ Terminal Olimpico", "50: Terminal Olimpico/ Jardim Oceanico", "20: Santa Cruz / Salvador Allende", 
-          "20: Salvador Allende / Santa Cruz", "13: Mato Alto / Alvorada", "13: Alvorada /  Mato Alto", "53B: Jardim Oceanico / Sulacap", 
-          "53B: Sulacap / Jardim Oceanico", "29: Salvador Allende /  Jardim Oceanico", "29:  Jardim Oceanico/ Salvador Allende", 
-          "41: Recreio / Terminal Madureira", "41: Terminal Madureira / Recreio", "35A:  Jardim Oceanico/ Madureira", "35A: Madureira / Jardim Oceanico", 
-          "18: Recreio Shopping / Jardim Oceanico", "15: Pingo d'Água / Recreio Shopping", "19: Salvador Allende / Pingo d'Água", 
-          "18: Jardim Oceanico/ Recreio Shopping", "27: Salvador Allende / Mato Alto", "31A: Alvorada / Vicente de Carvalho", 
-          "31A: Vicente de Carvalho / Alvorada", "47:  Santa Efigenia/ Madureira", "37: Alvorada / Tanque")
+novo <- c("10: Alvorada / Santa Cruz", "10: Santa Cruz / Alvorada", 
+          "LECD33: Campo Grande / Santa Cruz", "42A: Galeao / Madureira", 
+          "42E: Galeao / Santa Efigenia", "LECD33: Santa Cruz / Campo Grande", 
+          "12: Pingo d'Água / Alvorada", "11N: Santa Cruz / Alvorada", 
+          "11N: Alvorada / Santa Cruz", "51A: Vila Militar / Terminal Alvorada", 
+          "12: Alvorada / Pingo d'Água", "51A:  Terminal Alvorada / Vila Militar", 
+          "51: Terminal Recreio / Vila Militar", "51: Vila Militar / Terminal Recreio", 
+          "38A: Galeao / Alvorada", "38A: Alvorada / Galeao", 
+          "27: Mato Alto: Salvador Allende", "25A:  Mato Alto /  Alvorada", 
+          "25A:  Alvorada / Mato Alto", "35: Madureira / Alvorada", 
+          "35: Alvorada  /  Madureira", "22: Alvorada / Jardim Oceanico", 
+          "22: Jardim Oceanico/ Alvorada", "42A: Madureira / Galeao", 
+          "19: Pingo d'Água / Salvador Allende", "46: Alvorada / Penha", 
+          "46: Penha / Alvorada", "53A: Sulacap / Alvorada", 
+          "53A: Alvorada / Sulacap", "40A: Alvorada / Madureira", 
+          "40A: Madureira / Alvorada", "38N: Fundao / Alvorada", 
+          "15: Recreio Shopping / Pingo d'Água", "14: Campo Grande / Salvador Allende", 
+          "14: Salvador Allende / Campo Grande", "50: Jardim Oceanico/ Terminal Olimpico", 
+          "50: Terminal Olimpico/ Jardim Oceanico", "20: Santa Cruz / Salvador Allende", 
+          "20: Salvador Allende / Santa Cruz", "13: Mato Alto / Alvorada", 
+          "13: Alvorada /  Mato Alto", "53B: Jardim Oceanico / Sulacap", 
+          "53B: Sulacap / Jardim Oceanico", "29: Salvador Allende /  Jardim Oceanico", 
+          "29:  Jardim Oceanico/ Salvador Allende", "41: Recreio / Terminal Madureira", 
+          "41: Terminal Madureira / Recreio", "35A:  Jardim Oceanico/ Madureira", 
+          "35A: Madureira / Jardim Oceanico", "18: Recreio Shopping / Jardim Oceanico", 
+          "15: Pingo d'Água / Recreio Shopping", "19: Salvador Allende / Pingo d'Água", 
+          "18: Jardim Oceanico/ Recreio Shopping", "27: Salvador Allende / Mato Alto", 
+          "31A: Alvorada / Vicente de Carvalho", "31A: Vicente de Carvalho / Alvorada", 
+          "47:  Santa Efigenia/ Madureira", "37: Alvorada / Tanque")
+
 
 ### Transforma os dados em data frame, remove espacos e pontuacoes, substitui a redacao
-### original pelo texto formatado. Nao modificar.
-dados <- as.data.frame(dados) %>%
-  mutate(Trajeto = ifelse(Trajeto %in% original, novo, Trajeto))
+### original pelo texto formatado. NÃ£o mexer.
+dados <- as.data.frame(dados)
 
-unique(dados$Trajeto)
+dados$Trajeto <- gsub("[[:space:]]", "", dados$Trajeto)
+dados$Trajeto <- gsub("[[:punct:]]", "", dados$Trajeto)
+substituicao <- data.frame(from = original, to = novo) #tabela de substituicao
+substituicao$from <- gsub("[[:space:]]", "", substituicao$from)
+substituicao$from <- gsub("[[:punct:]]", "", substituicao$from)
+
+#substituir nomes de trajetos
+dados <- FindReplace(data = dados, Var = "Trajeto", replaceData = substituicao,
+                       from = "from", to = "to", exact = FALSE)
 
 ### Recorta os dados por dia e os grava na pasta.
 
@@ -78,7 +97,7 @@ while (dia1 <= dia2){
   mes <- as.character(dia1, format = "%m")
   day <- as.character(dia1, format = "%d")
   Recortado <- dados[as.character(dados$Data, format="%Y-%m-%d")==as.character(dia1),]
-  write.xlsx(Recortado, paste0(pasta, ano,"/",mes,"/bruto/",day,".xlsx")) 
+  end_xls <- paste0(pasta, ano,"/",mes,"/bruto/",day,".xlsx")
+  write.xlsx(Recortado,end_xls) 
   dia1 <- dia1 + days(1)
-} #funcao para separar dias
-
+}
